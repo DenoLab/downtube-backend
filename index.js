@@ -9,6 +9,10 @@ const port = 4000;
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.send('Server đang chạy! Vui lòng dùng POST /download để tải video.');
+});
+
 // API để tải video từ YouTube
 app.post('/download', (req, res) => {
     const { url } = req.body;
