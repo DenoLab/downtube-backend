@@ -13,6 +13,15 @@ app.get('/', (req, res) => {
     res.send('Server đang chạy! Vui lòng dùng POST /download để tải video.');
 });
 
+const fs = require('fs');
+const path = require('path');
+
+// Đảm bảo thư mục downloads tồn tại
+const downloadsDir = path.join(__dirname, 'downloads');
+if (!fs.existsSync(downloadsDir)) {
+    fs.mkdirSync(downloadsDir);
+}
+
 // API để tải video từ YouTube
 app.post('/download', (req, res) => {
     const { url } = req.body;
