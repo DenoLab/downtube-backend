@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { exec } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = 4000;
@@ -13,16 +14,14 @@ app.get('/', (req, res) => {
     res.send('Server đang chạy! Vui lòng dùng POST /download để tải video.');
 });
 
-const fs = require('fs');
-const path = require('path');
+const downloadDir = path.join(__dirname, 'downloads');
 
-// Đảm bảo thư mục downloads tồn tại
-const downloadsDir = path.join(__dirname, 'downloads');
-if (!fs.existsSync(downloadsDir)) {
-    fs.mkdirSync(downloadsDir);
+// Tạo thư mục downloads nếu chưa có
+if (!fs.existsSync(downloadDir)) {
+    fs.mkdirSync(downloadDir);
 }
 
-// API để tải video từ YouTube
+// API để tải video
 app.post('/download', (req, res) => {
     const { url } = req.body;
 
@@ -30,18 +29,28 @@ app.post('/download', (req, res) => {
         return res.status(400).json({ error: 'URL không hợp lệ!' });
     }
 
-    const outputPath = path.join(__dirname, 'downloads', '%(title)s.%(ext)s');
-
-    // Dùng yt-dlp để tải video
+    const outputPath = path.join(downloadDir, '%(title)s.%(ext)s');
     const command = `yt-dlp -o "${outputPath}" ${url}`;
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
             return res.status(500).json({ error: 'Tải video thất bại!', details: stderr });
         }
-        res.json({ message: 'Video tải thành công!', output: stdout });
+
+        // Tìm tên file đã tải
+        const match = stdout.match(/Destination: (.*)/);
+        if (match && match[1]) {
+            const fileName = path.basename(match[1].trim());
+            const fileUrl = `${req.protocol}://${req.get('host')}/files/${fileName}`;
+            res.json({ message: 'Video tải thành công!', fileUrl });
+        } else {
+            res.status(500).json({ error: 'Không tìm thấy file đã tải!' });
+        }
     });
 });
+
+// API để cung cấp file đã tải
+app.use('/files', express.static(downloadDir));
 
 // Chạy server
 app.listen(port, () => {
